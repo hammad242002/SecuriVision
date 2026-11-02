@@ -1,4 +1,4 @@
-# SecuriVision — Violation Detection System
+# SecuriVision: Violation Detection System
 
 AI-powered violation detection system using YOLO. SecuriVision detects **Smoking, Fire, and Fighting** in real time via RTSP or local webcams, logs violations to a PostgreSQL database, saves video clips, and streams live footage and alerts to a web dashboard.
 
@@ -24,7 +24,7 @@ AI-powered violation detection system using YOLO. SecuriVision detects **Smoking
    pip install -r requirements.txt
    ```
 
-2. **Configure environment** — create a `.env` file:
+2. **Configure environment** create a `.env` file:
    ```
    DB_HOST=localhost
    DB_PORT=5432
