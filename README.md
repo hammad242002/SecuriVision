@@ -1,10 +1,12 @@
 # SecuriVision — Violation Detection System
 
-AI-powered smoking violation detection using YOLO. Detects **Person + Cigarette + Smoke** in real time via RTSP or local webcam, logs violations to a PostgreSQL database, saves video clips, and streams live to a web dashboard.
+AI-powered violation detection system using YOLO. SecuriVision detects **Smoking, Fire, and Fighting** in real time via RTSP or local webcams, logs violations to a PostgreSQL database, saves video clips, and streams live footage and alerts to a web dashboard.
 
 ## Features
 
-- Real-time detection of Person, Cigarette, and Smoke using dual YOLO models
+- Three selectable detection modes: **Smoking, Fire, and Fighting**
+- Smoking detection using spatially matched **Person + Cigarette + Smoke** detections
+- Dedicated YOLO models for fire/smoke and fighting/violence detection
 - Live MJPEG camera stream with bounding box overlay
 - Multi-camera support (up to 3 cameras — RTSP or webcam)
 - Automatic 15-second video clip recording on violation (5 s pre + 10 s post)
@@ -71,21 +73,37 @@ AI-powered smoking violation detection using YOLO. Detects **Person + Cigarette 
 │   └── models.py            # Pydantic request/response models
 ├── FYP-UI-REPO/             # Frontend (vanilla JS, Chart.js) — served at /
 ├── weights/                 # YOLO model weights (not tracked in git)
-│   ├── best.pt              # Main model (person + cigarette)
-│   └── 11k.pt               # Smoke model
+│   ├── best.pt              # Main smoking model (person + cigarette)
+│   ├── 11k.pt               # Smoke model
+│   ├── fire.pt              # Fire/smoke model
+│   └── fight.pt             # Fighting/violence model
 └── clips/                   # Saved violation video clips
 ```
 
 ## Detection Logic
 
-A violation is triggered when all three are detected together with spatial proximity, and a 20-second cooldown has elapsed:
+Each camera operates in one selectable detection mode:
 
-1. Main model detects **Person** (≥ 0.70 conf) and **Cigarette** (≥ 0.50 conf) — spatially matched
-2. Smoke model (conf ≥ 0.20 — kept low because smoke is translucent) detects **Smoke** near the combined person+cigarette bounding box with a 30% margin and up to 1.5× bbox distance
-3. Smoke detections are buffered for 2 seconds to bridge gaps between frames
-4. A 15-second clip is saved to `clips/`
-5. Violation is stored in PostgreSQL with location, confidence, and bounding box data
-6. A WebSocket alert is broadcast to all connected dashboard clients
+### Smoking
+
+1. The main model detects a **Person** (≥ 0.70 confidence) and **Cigarette** (≥ 0.50 confidence) and spatially matches them.
+2. The smoke model detects **Smoke** (≥ 0.50 confidence) near the matched person and cigarette.
+3. Smoke detections are briefly buffered to bridge gaps between frames.
+4. A smoking violation is triggered when **Person + Cigarette + Smoke** are confirmed together and the 20-second cooldown has elapsed.
+
+### Fire
+
+1. The fire model detects fire or dense smoke in the camera feed.
+2. A sliding detection window confirms repeated hits to reduce false alerts.
+3. A fire violation is triggered after confirmation and a 40-second fire cooldown.
+
+### Fighting
+
+1. The fighting model detects the **violence** class in the camera feed.
+2. At least four consecutive detections with ≥ 0.50 confidence confirm the event.
+3. A fighting violation is triggered after confirmation and a 20-second cooldown.
+
+For every confirmed violation, SecuriVision saves a 15-second clip to `clips/`, stores its type, location, confidence, and bounding-box data in PostgreSQL, and broadcasts a WebSocket alert to connected dashboard clients.
 
 ## Environment Variables Reference
 
